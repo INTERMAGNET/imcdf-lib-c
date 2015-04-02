@@ -1,5 +1,5 @@
 /*****************************************************************************
- * imcdf.h - include file for the C version of ImagCDF - the INTERMAGNET 
+ * imcdf.h - include file for the C version of ImagCDF - the INTERMAGNET
  *           CDF format
  *
  * THE IMCDF ROUTINES SHOULD NOT HAVE DEPENDENCIES ON OTHER LIBRARY ROUTINES -
@@ -9,13 +9,13 @@
  * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015
  *****************************************************************************/
 
-#include "cdf.h" 
- 
-/* enumerations for the metadata elements that hold structured text */ 
+#include "cdf.h"
+
+/* enumerations for the metadata elements that hold structured text */
 enum IMCDFPubLevel {IMCDF_PUBLEVEL_1=1, IMCDF_PUBLEVEL_2=2, IMCDF_PUBLEVEL_3=3, IMCDF_PUBLEVEL_4=4};
 enum IMCDFStandardLevel {IMCDF_STANDLEVEL_FULL, IMCDF_STANDLEVEL_PARTIAL, IMCDF_STANDLEVEL_NONE};
 
-/* an enumeration listing the type of variables that can be held in an ImagCDF */					 
+/* an enumeration listing the type of variables that can be held in an ImagCDF */
 enum IMCDFVariableType {IMCDF_VARTYPE_GEOMAGNETIC_FIELD_ELEMENT, IMCDF_VARTYPE_TEMPERATURE,
                         IMCDF_VARTYPE_ERROR};
 
@@ -48,7 +48,7 @@ enum IMCDFCompressionType {IMCDF_COMPRESS_NONE, IMCDF_COMPRESS_RLE,
 #define SCALAR_TIME_STAMPS_VAR_NAME             "GeomagneticScalarTimes"
 #define TEMPERATURE_TIME_STAMPS_VAR_NAME_BASE   "Temperature%sTimes"
 
-/* a structure that holds the ImagCDF global attributes 
+/* a structure that holds the ImagCDF global attributes
  * NOTES:
  * 1.) CDF uses the C 'long long' data type to hold 8-byte integers such at the TT2000 date/time
  *     There are a number of useful conversion routines in the CDF C library to convert to/from
@@ -61,30 +61,30 @@ enum IMCDFCompressionType {IMCDF_COMPRESS_NONE, IMCDF_COMPRESS_RLE,
 struct IMCDFGlobalAttr
 {
     /* DD 22, section 4.1 */
-    char *format_description;
-    char *format_version;
-    char *title;
+    const char *format_description;
+    const char *format_version;
+    const char *title;
     /* DD 22, section 4.2 */
-    char *iaga_code;
-    char *elements_recorded;                    /* NEW in version 1.1 */
+    const char *iaga_code;
+    const char *elements_recorded;                    /* NEW in version 1.1 */
     enum IMCDFPubLevel pub_level;               /* NEW in version 1.1 */
     long long pub_date;                         /* changed data type in version 1.1 - see note 1 */
     /* DD 22, section 4.3 */
-    char *observatory_name;
+    const char *observatory_name;
     double latitude;
     double longitude;
     double elevation;
-    char *institution;
-    char *vector_sens_orient;
+    const char *institution;
+    const char *vector_sens_orient;
     /* DD 22, section 4.3 */
     enum IMCDFStandardLevel standard_level;     /* NEW in version 1.1 */
-    char *standard_name;                        /* NEW in version 1.1 */
-    char *standard_version;                     /* NEW in version 1.1 */
-    char *partial_stand_desc;                   /* NEW in version 1.1 */
+    const char *standard_name;                        /* NEW in version 1.1 */
+    const char *standard_version;                     /* NEW in version 1.1 */
+    const char *partial_stand_desc;                   /* NEW in version 1.1 */
     /* DD 22, section 4.4 */
-    char *source;
-    char *terms_of_use;
-    char *unique_identifier;                    /* NEW in version 1.1 */
+    const char *source;
+    const char *terms_of_use;
+    const char *unique_identifier;                    /* NEW in version 1.1 */
     char **parent_identifiers;                  /* NEW in version 1.1 - see note 2 */
     int n_parent_identifiers;
     char **reference_links;                     /* NEW in version 1.1 - see note 2 */
@@ -112,8 +112,8 @@ struct IMCDFVariable
     enum IMCDFVariableType var_type;
     char elem_rec [10];
     /* the metadata */
-    char *field_nam;
-    char *units;
+    const char *field_nam;
+    const char *units;
     double fill_val;
     double valid_min;
     double valid_max;
@@ -124,18 +124,18 @@ struct IMCDFVariable
     /* elements that were in use in version 1.0, but have now been removed: */
     /* int var_num; */
     /* double start_date; */
-    /* double samp_per; */ 
+    /* double samp_per; */
     /* char *elem_rec; */
     /* double orig_freq; */
 };
 
 /* forward declarations */
 /* imcdf.c */
-char *imcdf_open2 (char *filename, enum IMCDFOpenType open_type, 
+char *imcdf_open2 (const char *filename, enum IMCDFOpenType open_type,
                    enum IMCDFCompressionType compress_type, int *cdf_handle);
 char *imcdf_close2 (int cdf_handle);
 char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_attrs);
-char *imcdf_read_variable (int cdf_handle, enum IMCDFVariableType var_type, 
+char *imcdf_read_variable (int cdf_handle, enum IMCDFVariableType var_type,
                            char *elem_rec, struct IMCDFVariable *variable);
 char *imcdf_read_time_stamps (int cdf_handle, char *var_name, struct IMCDFVariableTS *ts);
 void imcdf_free_global_attrs (struct IMCDFGlobalAttr *global_attrs);
@@ -158,11 +158,11 @@ int imcdf_close (int cdf_handle);
 int imcdf_add_global_attr_string (int cdf_handle, char *name, int entry_no, char *value);
 int imcdf_add_global_attr_double (int cdf_handle, char *name, int entry_no, double value);
 int imcdf_add_global_attr_tt2000 (int cdf_handle, char *name, int entry_no, long long value);
-int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name, 
+int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name,
 								    char *var_name, char *value);
-int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name, 
+int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name,
 								    char *var_name, double value);
-int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name, 
+int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name,
 								    char *var_name, long long value);
 int imcdf_create_data_array (int cdf_handle, char *name, double *data,
                              int data_length);
@@ -171,21 +171,21 @@ int imcdf_create_time_stamp_array (int cdf_handle, char *name, long long *data,
 int imcdf_append_data_array (int cdf_handle, char *name, double *data,
                              int data_length);
 int imcdf_append_time_stamp_array (int cdf_handle, char *name, long long *data,
-                           int data_length);                             
+                           int data_length);
 int imcdf_get_global_attribute_string (int cdf_handle, char *name, int entry_no, char **value);
 int imcdf_get_global_attribute_double (int cdf_handle, char *name, int entry_no, double *value);
 int imcdf_get_global_attribute_tt2000 (int cdf_handle, char *name, int entry_no, long long *value);
-int imcdf_get_variable_attribute_string (int cdf_handle, char *attr_name, 
+int imcdf_get_variable_attribute_string (int cdf_handle, char *attr_name,
                                          char *var_name, char **value);
-int imcdf_get_variable_attribute_double (int cdf_handle, char *attr_name, 
+int imcdf_get_variable_attribute_double (int cdf_handle, char *attr_name,
                                          char *var_name, double *value);
 double *imcdf_get_var_data (int cdf_handle, char *name, int *data_len);
 long long *imcdf_get_var_time_stamps (int cdf_handle, char *name, int *data_len);
 int imcdf_is_var_exist (int cdf_handle, char *name);
-int imcdf_date_time_to_tt2000 (int year, int month, int day, int hour, 
+int imcdf_date_time_to_tt2000 (int year, int month, int day, int hour,
                                int min, int sec, long long *tt2000);
-int imcdf_tt2000_to_date_time (long long tt2000, 
-                               int *year, int *month, int *day, 
+int imcdf_tt2000_to_date_time (long long tt2000,
+                               int *year, int *month, int *day,
                                int *hour, int *min, int *sec);
 long long imcdf_tt2000_inc (long long tt2000, int inc);
 long long *imcdf_make_tt2000_array (int year, int month, int day, int hour, int min, int sec,

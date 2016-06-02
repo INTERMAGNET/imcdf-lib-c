@@ -46,6 +46,7 @@
 /* private forward declarations */
 static int is_blank (char *s);
 static char *create_var_name (enum IMCDFVariableType var_type, char *elem_rec);
+static char *format_error_message (char *msg, char *param, int cdf_status);
 
 /** ------------------------------------------------------------------------
  *  ---- Open and close (using character based error return as for all -----
@@ -72,7 +73,7 @@ char *imcdf_open2 (char *filename, enum IMCDFOpenType open_type,
 
     *cdf_handle = imcdf_open (filename, open_type, compress_type);
     if (*cdf_handle < 0)
-        return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+        return format_error_message ("Error opening CDF file", filename, imcdf_get_last_status_code ());
     return 0;
     
 }
@@ -92,7 +93,7 @@ char *imcdf_close2 (int cdf_handle)
  
 {
     if (imcdf_close (cdf_handle))
-        return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+        return format_error_message ("Error closing CDF file", 0, imcdf_get_last_status_code ());
     return 0;
 
 }
@@ -121,26 +122,46 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
     char var_name [30], *pl_str, *sl_str, *str;
 
     /* get the global attributes */
-    if (imcdf_get_global_attribute_string (cdf_handle, "FormatDescription",    0, &(global_attrs->format_description))) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "FormatVersion",        0, &(global_attrs->format_version)))     return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "Title",                0, &(global_attrs->title)))              return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "IagaCode",             0, &(global_attrs->iaga_code)))          return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "ElementsRecorded",     0, &(global_attrs->elements_recorded)))  return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "PublicationLevel",     0, &pl_str))                             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_tt2000 (cdf_handle, "PublicationDate",      0, &(global_attrs->pub_date)))           return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "ObservatoryName",      0, &(global_attrs->observatory_name)))   return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_double (cdf_handle, "Latitude",             0, &(global_attrs->latitude)))           return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_double (cdf_handle, "Longitude",            0, &(global_attrs->longitude)))          return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_double (cdf_handle, "Elevation",            0, &(global_attrs->elevation)))          return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "Institution",          0, &(global_attrs->institution)))        return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "VectorSensOrient",     0, &(global_attrs->vector_sens_orient))) global_attrs->vector_sens_orient = 0;
-    if (imcdf_get_global_attribute_string (cdf_handle, "StandardLevel",        0, &sl_str))                             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "StandardName",         0, &(global_attrs->standard_name)))      global_attrs->standard_name = 0;;
-    if (imcdf_get_global_attribute_string (cdf_handle, "StandardVersion",      0, &(global_attrs->standard_version)))   global_attrs->standard_version = 0;
-    if (imcdf_get_global_attribute_string (cdf_handle, "PartialStandDesc",     0, &(global_attrs->partial_stand_desc))) global_attrs->partial_stand_desc = 0;;
-    if (imcdf_get_global_attribute_string (cdf_handle, "Source",               0, &(global_attrs->source)))             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_global_attribute_string (cdf_handle, "TermsOfUse",           0, &(global_attrs->terms_of_use)))       global_attrs->terms_of_use = 0;
-    if (imcdf_get_global_attribute_string (cdf_handle, "UniqueIdentifier",     0, &(global_attrs->unique_identifier)))  global_attrs->unique_identifier = 0;
+    if (imcdf_get_global_attribute_string (cdf_handle, "FormatDescription",    0, &(global_attrs->format_description))) 
+      return format_error_message ("Error reading global attribute", "FormatDescription", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "FormatVersion",        0, &(global_attrs->format_version)))     
+      return format_error_message ("Error reading global attribute", "FormatVersion", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "Title",                0, &(global_attrs->title)))              
+      return format_error_message ("Error reading global attribute", "Title", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "IagaCode",             0, &(global_attrs->iaga_code)))          
+      return format_error_message ("Error reading global attribute", "IagaCode", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "ElementsRecorded",     0, &(global_attrs->elements_recorded)))  
+      return format_error_message ("Error reading global attribute", "ElementsRecorded", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "PublicationLevel",     0, &pl_str))                             
+      return format_error_message ("Error reading global attribute", "PublicationLevel", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_tt2000 (cdf_handle, "PublicationDate",      0, &(global_attrs->pub_date)))           
+      return format_error_message ("Error reading global attribute", "PublicationDate", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "ObservatoryName",      0, &(global_attrs->observatory_name)))   
+      return format_error_message ("Error reading global attribute", "ObservatoryName", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_double (cdf_handle, "Latitude",             0, &(global_attrs->latitude)))           
+      return format_error_message ("Error reading global attribute", "Latitude", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_double (cdf_handle, "Longitude",            0, &(global_attrs->longitude)))          
+      return format_error_message ("Error reading global attribute", "Longitude", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_double (cdf_handle, "Elevation",            0, &(global_attrs->elevation)))          
+      return format_error_message ("Error reading global attribute", "Elevation", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "Institution",          0, &(global_attrs->institution)))        
+      return format_error_message ("Error reading global attribute", "Institution", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "VectorSensOrient",     0, &(global_attrs->vector_sens_orient))) 
+      global_attrs->vector_sens_orient = 0;
+    if (imcdf_get_global_attribute_string (cdf_handle, "StandardLevel",        0, &sl_str))                             
+      return format_error_message ("Error reading global attribute", "StandardLevel", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "StandardName",         0, &(global_attrs->standard_name)))      
+      global_attrs->standard_name = 0;;
+    if (imcdf_get_global_attribute_string (cdf_handle, "StandardVersion",      0, &(global_attrs->standard_version)))   
+      global_attrs->standard_version = 0;
+    if (imcdf_get_global_attribute_string (cdf_handle, "PartialStandDesc",     0, &(global_attrs->partial_stand_desc))) 
+      global_attrs->partial_stand_desc = 0;;
+    if (imcdf_get_global_attribute_string (cdf_handle, "Source",               0, &(global_attrs->source)))             
+      return format_error_message ("Error reading global attribute", "Source", imcdf_get_last_status_code ());
+    if (imcdf_get_global_attribute_string (cdf_handle, "TermsOfUse",           0, &(global_attrs->terms_of_use)))       
+      global_attrs->terms_of_use = 0;
+    if (imcdf_get_global_attribute_string (cdf_handle, "UniqueIdentifier",     0, &(global_attrs->unique_identifier)))  
+      global_attrs->unique_identifier = 0;
     global_attrs->pub_level = imcdf_parse_pub_level_string (pl_str);
     global_attrs->standard_level = imcdf_parse_standard_level_string (sl_str);
     free (pl_str);
@@ -153,7 +174,7 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
         {
             global_attrs->parent_identifiers = realloc (global_attrs->parent_identifiers, sizeof (char *) * (global_attrs->n_parent_identifiers +1));
             if (! global_attrs->parent_identifiers)
-                return imcdf_status_code_tostring (BAD_MALLOC);
+                return format_error_message ("Error allocating memory", "ParentIdentifiers", CDF_OK);
             global_attrs->parent_identifiers [global_attrs->n_parent_identifiers ++] = str;
         }
         else
@@ -165,9 +186,9 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
     {
           if (! imcdf_get_global_attribute_string (cdf_handle, "ReferenceLinks", global_attrs->n_reference_links, &(str)))
         {
-            global_attrs->parent_identifiers = realloc (global_attrs->reference_links, sizeof (char *) * (global_attrs->n_reference_links +1));
+            global_attrs->reference_links = realloc (global_attrs->reference_links, sizeof (char *) * (global_attrs->n_reference_links +1));
             if (! global_attrs->reference_links)
-                return imcdf_status_code_tostring (BAD_MALLOC);
+                return format_error_message ("Error allocating memory", "ReferenceLinks", CDF_OK);
             global_attrs->reference_links [global_attrs->n_reference_links ++] = str;
         }
         else
@@ -175,9 +196,12 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
     }
 
     /* check metadata */
-    if (strcasecmp (global_attrs->title,              "Geomagnetic time series data")) return "Error: Title of data incorrect";
-    if (strcasecmp (global_attrs->format_description, "INTERMAGNET CDF Format"))       return "Error: Description of data incorrect";
-    if (strcasecmp (global_attrs->format_version,     "1.1"))                          return "Error: Format incorrect";
+    if (strcasecmp (global_attrs->title,              "Geomagnetic time series data")) 
+        return format_error_message ("Title of data incorrect", global_attrs->title, CDF_OK);
+    if (strcasecmp (global_attrs->format_description, "INTERMAGNET CDF Format"))
+        return format_error_message ("Description of data incorrect", global_attrs->format_description, CDF_OK);
+    if (strcasecmp (global_attrs->format_version,     "1.1")) 
+        return format_error_message ("Format incorrect", global_attrs->format_version, CDF_OK);
     
     return 0;
 }
@@ -199,7 +223,6 @@ char *imcdf_read_variable (int cdf_handle, enum IMCDFVariableType var_type,
 
 {
     char var_name [30], *msg, *ptr;
-    static char errmsg [100];
     
     /* create the variable name */
     ptr = create_var_name (var_type, elem_rec);
@@ -209,21 +232,23 @@ char *imcdf_read_variable (int cdf_handle, enum IMCDFVariableType var_type,
     /* read the variable metadata */
     variable->var_type = var_type;
     strcpy (variable->elem_rec, elem_rec);
-    if (imcdf_get_variable_attribute_string (cdf_handle, "FIELDNAM",  var_name, &(variable->field_nam)))  return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_variable_attribute_string (cdf_handle, "UNITS",     var_name, &(variable->units)))      return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_variable_attribute_double (cdf_handle, "FILLVAL",   var_name, &(variable->fill_val)))   return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_variable_attribute_double (cdf_handle, "VALIDMIN",  var_name, &(variable->valid_min)))  return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_variable_attribute_double (cdf_handle, "VALIDMAX",  var_name, &(variable->valid_max)))  return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_get_variable_attribute_string (cdf_handle, "DEPEND_0",  var_name, &(variable->depend_0)))   return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_string (cdf_handle, "FIELDNAM",  var_name, &(variable->field_nam)))
+        return format_error_message ("Error reading variable attribute", "FIELDNAM", imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_string (cdf_handle, "UNITS",     var_name, &(variable->units)))
+        return format_error_message ("Error reading variable attribute", "UNITS", imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_double (cdf_handle, "FILLVAL",   var_name, &(variable->fill_val)))
+        return format_error_message ("Error reading variable attribute", "FILLVAL", imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_double (cdf_handle, "VALIDMIN",  var_name, &(variable->valid_min)))
+        return format_error_message ("Error reading variable attribute", "VALIDMIN", imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_double (cdf_handle, "VALIDMAX",  var_name, &(variable->valid_max)))
+        return format_error_message ("Error reading variable attribute", "VALIDMAX", imcdf_get_last_status_code ());
+    if (imcdf_get_variable_attribute_string (cdf_handle, "DEPEND_0",  var_name, &(variable->depend_0)))
+        return format_error_message ("Error reading variable attribute", "DEPEND_0", imcdf_get_last_status_code ());
     
     /* read the data */
     variable->data = imcdf_get_var_data (cdf_handle, var_name, &(variable->data_len));
     if (! variable->data) 
-    {
-      if (imcdf_get_last_status_code () == CDF_OK) sprintf (errmsg, "Error reading variable data %s", var_name);
-      else (strcpy (errmsg, imcdf_status_code_tostring (imcdf_get_last_status_code ())));
-      return errmsg;
-    }
+      return format_error_message ("Error reading variable data", var_name, imcdf_get_last_status_code ());
         
     return 0;
 
@@ -245,16 +270,10 @@ char *imcdf_read_time_stamps (int cdf_handle, char *var_name, struct IMCDFVariab
 
 {
 
-    static char errmsg [100];
-
     ts->var_name = var_name;
     ts->time_stamps = imcdf_get_var_time_stamps (cdf_handle, var_name, &(ts->data_len));
     if (! ts->time_stamps)
-    {
-        if (imcdf_get_last_status_code () == CDF_OK) sprintf (errmsg, "Error reading time stamps %s", var_name);
-        else (strcpy (errmsg, imcdf_status_code_tostring (imcdf_get_last_status_code ())));
-        return errmsg;
-    }
+        return format_error_message ("Error reading time stamps", var_name, imcdf_get_last_status_code ());
         
     return 0;
 
@@ -368,33 +387,55 @@ char *imcdf_write_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_a
     if (is_blank (global_attrs->terms_of_use))       global_attrs->terms_of_use = getINTERMAGNETTermsOfUse();
          
     /* write metadata */
-    if (imcdf_add_global_attr_string (cdf_handle, "FormatDescription", 0,                                  global_attrs->format_description))    return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "FormatVersion", 0,                                      global_attrs->format_version))        return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "Title", 0,                                              global_attrs->title))                 return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "IagaCode", 0,                                           global_attrs->iaga_code))             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "ElementsRecorded", 0,                                   global_attrs->elements_recorded))     return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "PublicationLevel", 0,    imcdf_pub_level_code_tostring (global_attrs->pub_level)))            return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_tt2000 (cdf_handle, "PublicationDate", 0,                                    global_attrs->pub_date))              return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "ObservatoryName", 0,                                    global_attrs->observatory_name))      return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_double (cdf_handle, "Latitude", 0,                                           global_attrs->latitude))              return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_double (cdf_handle, "Longitude", 0,                                          global_attrs->longitude))             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_double (cdf_handle, "Elevation", 0,                                          global_attrs->elevation))             return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "Institution", 0,                                        global_attrs->institution))           return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "VectorSensOrient", 0,                                   global_attrs->vector_sens_orient))    return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "StandardLevel", 0,  imcdf_standard_level_code_tostring (global_attrs->standard_level)))       return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "StandardName", 0,                                       global_attrs->standard_name))         return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "StandardVersion", 0,                                    global_attrs->standard_version))      return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "PartialStandDesc", 0,                                   global_attrs->partial_stand_desc))    return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "Source", 0,                                             global_attrs->source))                return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "TermsOfUse", 0,                                         global_attrs->terms_of_use))          return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_global_attr_string (cdf_handle, "UniqueIdentifier", 0,                                   global_attrs->unique_identifier))     return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "FormatDescription", 0,                                  global_attrs->format_description))
+        return format_error_message ("Error writing global attribute", "FormatDescription", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "FormatVersion", 0,                                      global_attrs->format_version))
+        return format_error_message ("Error writing global attribute", "FormatVersion", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "Title", 0,                                              global_attrs->title))
+        return format_error_message ("Error writing global attribute", "Title", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "IagaCode", 0,                                           global_attrs->iaga_code))
+        return format_error_message ("Error writing global attribute", "IagaCode", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "ElementsRecorded", 0,                                   global_attrs->elements_recorded))
+        return format_error_message ("Error writing global attribute", "ElementsRecorded", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "PublicationLevel", 0,    imcdf_pub_level_code_tostring (global_attrs->pub_level)))
+        return format_error_message ("Error writing global attribute", "PublicationLevel", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_tt2000 (cdf_handle, "PublicationDate", 0,                                    global_attrs->pub_date))
+        return format_error_message ("Error writing global attribute", "PublicationDate", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "ObservatoryName", 0,                                    global_attrs->observatory_name))
+        return format_error_message ("Error writing global attribute", "ObservatoryName", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_double (cdf_handle, "Latitude", 0,                                           global_attrs->latitude))
+        return format_error_message ("Error writing global attribute", "Latitude", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_double (cdf_handle, "Longitude", 0,                                          global_attrs->longitude))
+        return format_error_message ("Error writing global attribute", "Longitude", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_double (cdf_handle, "Elevation", 0,                                          global_attrs->elevation))
+        return format_error_message ("Error writing global attribute", "Elevation", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "Institution", 0,                                        global_attrs->institution))
+        return format_error_message ("Error writing global attribute", "Institution", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "VectorSensOrient", 0,                                   global_attrs->vector_sens_orient)) 
+        return format_error_message ("Error writing global attribute", "VectorSensOrient", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "StandardLevel", 0,  imcdf_standard_level_code_tostring (global_attrs->standard_level)))
+        return format_error_message ("Error writing global attribute", "StandardLevel", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "StandardName", 0,                                       global_attrs->standard_name))
+        return format_error_message ("Error writing global attribute", "StandardName", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "StandardVersion", 0,                                    global_attrs->standard_version))
+        return format_error_message ("Error writing global attribute", "StandardVersion", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "PartialStandDesc", 0,                                   global_attrs->partial_stand_desc))
+        return format_error_message ("Error writing global attribute", "PartialStandDesc", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "Source", 0,                                             global_attrs->source))
+        return format_error_message ("Error writing global attribute", "Source", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "TermsOfUse", 0,                                         global_attrs->terms_of_use))
+        return format_error_message ("Error writing global attribute", "TermsOfUse", imcdf_get_last_status_code ());
+    if (imcdf_add_global_attr_string (cdf_handle, "UniqueIdentifier", 0,                                   global_attrs->unique_identifier))
+        return format_error_message ("Error writing global attribute", "UniqueIdentifier", imcdf_get_last_status_code ());
     for (count=0; count<global_attrs->n_parent_identifiers; count++)
     {
-        if (imcdf_add_global_attr_string (cdf_handle, "ParentIdentifiers", count, global_attrs->parent_identifiers [count])) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+        if (imcdf_add_global_attr_string (cdf_handle, "ParentIdentifiers", count, global_attrs->parent_identifiers [count]))
+            return format_error_message ("Error writing global attribute", "ParentIdentifiers", imcdf_get_last_status_code ());
     }
     for (count=0; count<global_attrs->n_reference_links; count++)
     {
-        if (imcdf_add_global_attr_string (cdf_handle, "ReferenceLinks", count, global_attrs->reference_links [count])) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+        if (imcdf_add_global_attr_string (cdf_handle, "ReferenceLinks", count, global_attrs->reference_links [count]))
+            return format_error_message ("Error writing global attribute", "ReferenceLinks", imcdf_get_last_status_code ());
     }
 
     return 0;
@@ -419,11 +460,13 @@ char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable)
     
     /* create the variable name */
     ptr = create_var_name (variable->var_type, variable->elem_rec);
-    if (! ptr) return "Error: Invalid variable type";
+    if (! ptr) 
+        return format_error_message ("Invalid variable type", 0, CDF_OK);
     strcpy (var_name, ptr);
     
     /* write the data */
-    if (imcdf_create_data_array (cdf_handle, var_name, variable->data, variable->data_len)) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+    if (imcdf_create_data_array (cdf_handle, var_name, variable->data, variable->data_len)) 
+        return format_error_message ("Error writing variable data", var_name, CDF_OK);
     
     /* write the metadata - ignore the DEPEND_0 value in the 'variable' structure and construct a value from the data */
     if (imcdf_is_vector_gm_data (variable->var_type, variable->elem_rec))
@@ -433,7 +476,7 @@ char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable)
     else
     {
         if (variable->var_type != IMCDF_VARTYPE_TEMPERATURE)
-            return "Missing or invalid element code";
+            return format_error_message ("Missing or invalid element code", 0, CDF_OK);
         sprintf (depend_0, TEMPERATURE_TIME_STAMPS_VAR_NAME_BASE, variable->elem_rec);
     }
 
@@ -442,14 +485,22 @@ char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable)
     else
         strcpy (lablaxis, variable->elem_rec);
     
-    if (imcdf_add_variable_attr_string (cdf_handle, "FIELDNAM",      var_name, variable->field_nam)) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_string (cdf_handle, "UNITS",         var_name, variable->units))     return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_double (cdf_handle, "FILLVAL",       var_name, variable->fill_val))  return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_double (cdf_handle, "VALIDMIN",      var_name, variable->valid_min)) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_double (cdf_handle, "VALIDMAX",      var_name, variable->valid_max)) return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_string (cdf_handle, "DEPEND_0",      var_name, depend_0))            return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_string (cdf_handle, "DISPLAY_TYPE",  var_name, "time_series"))       return imcdf_status_code_tostring (imcdf_get_last_status_code ());
-    if (imcdf_add_variable_attr_string (cdf_handle, "LABLAXIS",      var_name, lablaxis))            return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_string (cdf_handle, "FIELDNAM",      var_name, variable->field_nam))
+        return format_error_message ("Error writing variable attribute", "FIELDNAM", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_string (cdf_handle, "UNITS",         var_name, variable->units))
+        return format_error_message ("Error writing variable attribute", "UNITS", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_double (cdf_handle, "FILLVAL",       var_name, variable->fill_val))
+        return format_error_message ("Error writing variable attribute", "FILLVAL", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_double (cdf_handle, "VALIDMIN",      var_name, variable->valid_min))
+        return format_error_message ("Error writing variable attribute", "VALIDMIN", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_double (cdf_handle, "VALIDMAX",      var_name, variable->valid_max))
+        return format_error_message ("Error writing variable attribute", "VALIDMAX", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_string (cdf_handle, "DEPEND_0",      var_name, depend_0))
+        return format_error_message ("Error writing variable attribute", "DEPEND_0", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_string (cdf_handle, "DISPLAY_TYPE",  var_name, "time_series"))
+        return format_error_message ("Error writing variable attribute", "DISPLAY_TYPE", imcdf_get_last_status_code ());
+    if (imcdf_add_variable_attr_string (cdf_handle, "LABLAXIS",      var_name, lablaxis)) 
+        return format_error_message ("Error writing variable attribute", "LABLAXIS", imcdf_get_last_status_code ());
     
     return 0;
 }
@@ -471,7 +522,7 @@ char *imcdf_write_time_stamps (int cdf_handle, struct IMCDFVariableTS *ts)
     
     /* write the data */
     if (imcdf_create_time_stamp_array (cdf_handle, ts->var_name, ts->time_stamps, ts->data_len))
-        return imcdf_status_code_tostring (imcdf_get_last_status_code ());
+        return format_error_message ("Error writing time stamp data", ts->var_name, CDF_OK);
     return 0;
     
 }
@@ -581,7 +632,7 @@ int imcdf_is_scalar_gm_data (enum IMCDFVariableType var_type, char *elem_rec)
  * Input parameters: prefix - the prefix for the name (including any directory)
  *                   station_code - the IAGA station code
  *                   start_date - the start date for the data (in CDF TT2000 format)
- *                   pub_leve - the publication level of the data
+ *                   pub_level - the publication level of the data
  *                   sample_period - the period between samples, in seconds
  *                   force_lower_case - set true to force the filename to lower case
  * Output parameters: filename - the filename
@@ -594,7 +645,7 @@ char *imcdf_make_filename (char *prefix, char *station_code, long long start_dat
                            int force_lower_case, char *filename)
 {
     int year, month, day, hour, min, sec;
-    char file_base [20], *ptr;
+    char file_base [30], *ptr;
     double dummy;
 
     /* convert the date to a format that can be printed */
@@ -602,17 +653,17 @@ char *imcdf_make_filename (char *prefix, char *station_code, long long start_dat
 
     /* set up the parts of the filename that depend on the sample period */
     if (sample_period <= 1.0)               /* second data */
-        sprintf (file_base, "%04d%02d%02d_%02d%02d%02d", year, month, day, hour, min, sec);
+        sprintf (file_base, "%04d%02d%02d_%02d%02d%02d_pt1s", year, month, day, hour, min, sec);
     else if (sample_period <= 60.0)         /* minute data */
-        sprintf (file_base, "%04d%02d%02d_%02d%02d", year, month, day, hour, min);
+        sprintf (file_base, "%04d%02d%02d_%02d%02d_pt1m", year, month, day, hour, min);
     else if (sample_period <= 3600.0)       /* hour data */
-        sprintf (file_base, "%04d%02d%02d_%02d", year, month, day, hour);
+        sprintf (file_base, "%04d%02d%02d_%02d_pt1h", year, month, day, hour);
     else if (sample_period <= 86400.0)      /* day data */
-        sprintf (file_base, "%04d%02d%02d", year, month, day);
+        sprintf (file_base, "%04d%02d%02d_p1d", year, month, day);
     else if (sample_period <= 2678400)      /* month data */
-        sprintf (file_base, "%04d%02d", year, month);
+        sprintf (file_base, "%04d%02d_p1m", year, month);
     else                                    /* year data */
-        sprintf (file_base, "%04d", year);
+        sprintf (file_base, "%04d_p1y", year);
 
     if (! prefix) prefix = "";
     sprintf (filename, "%s%s_%s_%s.cdf", prefix, station_code, file_base, 
@@ -658,6 +709,27 @@ static char *create_var_name (enum IMCDFVariableType var_type, char *elem_rec)
     }
     return var_name;
 }    
+
+static char *format_error_message (char *msg, char *param, int cdf_status)
+{
+
+  static char buffer [200];
+
+  strcpy (buffer, msg);
+  if (param)
+  {
+    strcat (buffer, ": ");
+    strcat (buffer, param);
+  }
+  if (cdf_status != CDF_OK)
+  {
+    strcat (buffer, " [CDF error: ]");
+    strcat (buffer, imcdf_status_code_tostring (imcdf_get_last_status_code ()));
+  }
+
+  return buffer;
+
+}
 
 
     

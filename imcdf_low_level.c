@@ -12,7 +12,8 @@
  * an array of CDFid elements
  *
  * Simon Flower, 19/12/2012
- * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015
+ * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015  
+ * Updates to version 1.3 of ImagCDF. Simon Flower, 09/09/2025
  *****************************************************************************/
 #include <unistd.h>
 #include <stdio.h>
@@ -36,8 +37,9 @@ CDFstatus cdf_status;
 /* private forward declarations  */
 static void initialise_cdf_ids ();
 static int sanity_check_handles (int cdf_handle);
+static long find_global_attribute (int cdf_handle, char *name);
 static long find_variable_attribute (int cdf_handle, char *name);
-
+    
 /** ------------------------------------------------------------------------
  *  --------------------- Opening and closing CDF files --------------------
  *  ------------------------------------------------------------------------*/
@@ -63,10 +65,10 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
     CDFid id;
 
     initialise_cdf_ids ();
-
+    
     /* check there is space to open another file */
     if (cdf_index >= MAX_OPEN_CDF_FILES) return -1;
-
+    
     /* open the file */
     switch (open_type)
     {
@@ -87,7 +89,7 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
     default:
     return -1;
     }
-
+    
     /* set the compression */
     switch (compress_type)
     {
@@ -139,6 +141,8 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
         cparams [0] = 9l;
         cdf_status = CDFsetCompression (id, GZIP_COMPRESSION, cparams);
         break;
+    default:
+        break;
     }
     if (cdf_status < CDF_WARN) return -1;
 
@@ -150,7 +154,7 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
 /*****************************************************************************
  * imcdf_close
  *
- * Description: close a CDF - you MUST call this after writing to the CDF
+ * Description: close a CDF - you MUST call this after writing to the CDF 
  *              otherwise it will be corrupt
  *
  * Input parameters: cdf_handle - the CDF to close
@@ -159,7 +163,7 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
  *
  *****************************************************************************/
  int imcdf_close (int cdf_handle)
-
+ 
  {
     int count;
 
@@ -173,51 +177,51 @@ int imcdf_open (char *filename, enum IMCDFOpenType open_type,
     for (count=cdf_handle +1; count<cdf_index; count++)
         cdf_ids [count -1] = cdf_ids [count];
     cdf_index --;
-
+    
     return 0;
 }
 
-
+    
 /** ------------------------------------------------------------------------
  *  ------------------------- Writing to CDF files -------------------------
  *  ------------------------------------------------------------------------*/
-
+    
 /****************************************************************************
  * imcdf_add_global_attr_string
  * imcdf_add_global_attr_double
  * imcdf_add_global_attr_tt2000
  *
- * Description: add a global attribute of the specified type to the CDF file
+ * Description: add a global attribute of the specified type to the CDF file 
  *              and make an entry in it
  *
  * Input parameters: cdf_handle - handle to the CDF file
- *                      name - the attribute name (must be unique)
+ *                   attr_name - the attribute name (must be unique)
  *                   entry_no - the entry number required, 0..n_entries-1
  *                   value - the contents of the entry
- * Output parameters:
+ * Output parameters: 
  * Returns: 0 for success, -1 for failure
  *
  ****************************************************************************/
-int imcdf_add_global_attr_string (int cdf_handle, char *name, int entry_no, char *value)
+int imcdf_add_global_attr_string (int cdf_handle, char *attr_name, int entry_no, char *value)
 
 {
     long attr_num;
 
     if (sanity_check_handles (cdf_handle)) return -1;
-
+    
     if (value)
     {
-        cdf_status = CDFcreateAttr (cdf_ids [cdf_handle], name, GLOBAL_SCOPE, &attr_num);
-        if (cdf_status < CDF_WARN) return -1;
+        attr_num = find_global_attribute (cdf_handle, attr_name);
+        if (attr_num < 0l) return -1;
         cdf_status = CDFputAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, CDF_CHAR, (long) strlen (value), value);
         if (cdf_status < CDF_WARN) return -1;
     }
-
+    
     return 0;
 }
-
-
-int imcdf_add_global_attr_double (int cdf_handle, char *name, int entry_no, double value)
+    
+    
+int imcdf_add_global_attr_double (int cdf_handle, char *attr_name, int entry_no, double value)
 
 {
     long attr_num;
@@ -225,30 +229,30 @@ int imcdf_add_global_attr_double (int cdf_handle, char *name, int entry_no, doub
 
     if (sanity_check_handles (cdf_handle)) return -1;
 
-    cdf_status = CDFcreateAttr (cdf_ids [cdf_handle], name, GLOBAL_SCOPE, &attr_num);
-    if (cdf_status < CDF_WARN) return -1;
+    attr_num = find_global_attribute (cdf_handle, attr_name);
+    if (attr_num < 0l) return -1;
     values [0] = value;
     cdf_status = CDFputAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, CDF_DOUBLE, 1l, values);
     if (cdf_status < CDF_WARN) return -1;
-
+    
     return 0;
 }
 
 
-int imcdf_add_global_attr_tt2000 (int cdf_handle, char *name, int entry_no, long long value)
+int imcdf_add_global_attr_tt2000 (int cdf_handle, char *attr_name, int entry_no, long long value)
 
 {
     long attr_num;
     long long values [1];
 
     if (sanity_check_handles (cdf_handle)) return -1;
-
-    cdf_status = CDFcreateAttr (cdf_ids [cdf_handle], name, GLOBAL_SCOPE, &attr_num);
-    if (cdf_status < CDF_WARN) return -1;
+    
+    attr_num = find_global_attribute (cdf_handle, attr_name);
+    if (attr_num < 0l) return -1;
     values [0] = value;
     cdf_status = CDFputAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, CDF_TIME_TT2000, 1l, values);
     if (cdf_status < CDF_WARN) return -1;
-
+    
     return 0;
 }
 
@@ -257,18 +261,18 @@ int imcdf_add_global_attr_tt2000 (int cdf_handle, char *name, int entry_no, long
  * imcdf_add_variable_attr_double
  * imcdf_add_variable_attr_tt2000
  *
- * Description: add a variable attribute of the specified type to the CDF file
+ * Description: add a variable attribute of the specified type to the CDF file 
  *              and make an entry in it
  *
  * Input parameters: cdf_handle - handle to the CDF file
  *                      attr_name - the attribute name (must be unique)
  *                   var_name - the name of the variable to add the entry to
  *                   value - the contents of the entry
- * Output parameters:
+ * Output parameters: 
  * Returns: 0 for success, -1 for failure
  *
  ****************************************************************************/
-int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name,
+int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name, 
                                     char *var_name, char *value)
 
 {
@@ -276,7 +280,7 @@ int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name,
     long attr_num, var_num;
 
     if (sanity_check_handles (cdf_handle)) return -1;
-
+        
     attr_num = find_variable_attribute (cdf_handle, attr_name);
     if (attr_num < 0l) return -1;
 
@@ -286,15 +290,15 @@ int imcdf_add_variable_attr_string (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) var_num;
         return -1;
     }
-
+    
     cdf_status = CDFputAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, CDF_CHAR, (long) strlen (value), value);
     if (cdf_status < CDF_WARN) return -1;
-
+    
     return 0;
 }
 
 
-int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name,
+int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name, 
                                     char *var_name, double value)
 {
 
@@ -302,7 +306,7 @@ int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name,
     double values [1];
 
     if (sanity_check_handles (cdf_handle)) return -1;
-
+        
     attr_num = find_variable_attribute (cdf_handle, attr_name);
     if (attr_num < 0l) return -1;
 
@@ -312,18 +316,18 @@ int imcdf_add_variable_attr_double (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) var_num;
         return -1;
     }
-
+    
     values [0] = value;
-    cdf_status = CDFputAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num,
+    cdf_status = CDFputAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, 
                                    CDF_DOUBLE, 1l, values);
     if (cdf_status < CDF_WARN) return -1;
-
+    
     return 0;
 
 }
+    
 
-
-int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name,
+int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name, 
                                     char *var_name, long long value)
 {
 
@@ -331,7 +335,7 @@ int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name,
     long long values [1];
 
     if (sanity_check_handles (cdf_handle)) return -1;
-
+        
     attr_num = find_variable_attribute (cdf_handle, attr_name);
     if (attr_num < 0l) return -1;
 
@@ -341,12 +345,12 @@ int imcdf_add_variable_attr_tt2000 (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) var_num;
         return -1;
     }
-
+    
     values [0] = value;
-    cdf_status = CDFputAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num,
+    cdf_status = CDFputAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, 
                                    CDF_TIME_TT2000, 1l, values);
     if (cdf_status < CDF_WARN) return -1;
-
+    
     return 0;
 
 }
@@ -372,18 +376,17 @@ int imcdf_create_data_array (int cdf_handle, char *name, double *data,
                              int data_length)
 
 {
-    int count;
     long var_num, dim_size [1], dim_var [1];
-
+        
     if (sanity_check_handles (cdf_handle)) return -1;
 
     dim_size [0] = 1;
     dim_var [0] = VARY;
     cdf_status = CDFcreatezVar (cdf_ids [cdf_handle], name, CDF_DOUBLE,
                 1l, 0l, dim_size, VARY, dim_var, &var_num);
-    // if (cdf_status < CDF_WARN) return -1; PGC removed in favour of next line 2016-06-09
-	if ((cdf_status < CDF_WARN)&&(cdf_status != VAR_EXISTS)) return -1; // PGC inserted from previous version 2015 2016-06-09
-    return imcdf_append_data_array (cdf_handle, name, data, data_length);
+    if (cdf_status < CDF_WARN) return -1;
+
+    return imcdf_append_data_array (cdf_handle, name, data, data_length);    
 }
 
 
@@ -391,19 +394,17 @@ int imcdf_create_time_stamp_array (int cdf_handle, char *name, long long *data,
                                    int data_length)
 
 {
-    int count;
     long var_num, dim_size [1], dim_var [1];
-
+        
     if (sanity_check_handles (cdf_handle)) return -1;
 
     dim_size [0] = 1;
     dim_var [0] = VARY;
     cdf_status = CDFcreatezVar (cdf_ids [cdf_handle], name, CDF_TIME_TT2000,
                 1l, 0l, dim_size, VARY, dim_var, &var_num);
-    // if (cdf_status < CDF_WARN) return -1; PGC removed in favour of next line 2016-06-09
-    if ((cdf_status < CDF_WARN)&&(cdf_status != VAR_EXISTS)) return -1; // PGC inserted from previous version 2015 2016-06-09
+    if (cdf_status < CDF_WARN) return -1;
 
-    return imcdf_append_time_stamp_array (cdf_handle, name, data, data_length);
+    return imcdf_append_time_stamp_array (cdf_handle, name, data, data_length);    
 }
 
 
@@ -412,7 +413,7 @@ int imcdf_append_data_array (int cdf_handle, char *name, double *data,
 
 {
     long var_num, n_recs, count;
-
+        
     if (sanity_check_handles (cdf_handle)) return -1;
 
     var_num = CDFgetVarNum (cdf_ids [cdf_handle], name);
@@ -421,12 +422,11 @@ int imcdf_append_data_array (int cdf_handle, char *name, double *data,
         cdf_status = var_num;
         return -1;
     }
-
+    
     cdf_status = CDFgetzVarMaxWrittenRecNum (cdf_ids [cdf_handle], var_num, &n_recs);
     if (cdf_status != CDF_OK) return -1;
-    // if (n_recs < 0) n_recs = 0; PGC next 2016-06-09
-    ++n_recs; // PGC n_recs=-1 for new data, =max existing record number for existing data; either way next record is +1 2016-06-09
-
+    if (n_recs < 0) n_recs = 0;
+    
     for (count=0; count<data_length; count++)
     {
         cdf_status = CDFputzVarRecordData (cdf_ids [cdf_handle], var_num, count + n_recs, data + count);
@@ -442,7 +442,7 @@ int imcdf_append_time_stamp_array (int cdf_handle, char *name, long long *data,
 
 {
     long var_num, n_recs, count;
-
+        
     if (sanity_check_handles (cdf_handle)) return -1;
 
     var_num = CDFgetVarNum (cdf_ids [cdf_handle], name);
@@ -454,18 +454,17 @@ int imcdf_append_time_stamp_array (int cdf_handle, char *name, long long *data,
 
     cdf_status = CDFgetzVarMaxWrittenRecNum (cdf_ids [cdf_handle], var_num, &n_recs);
     if (cdf_status != CDF_OK) return -1;
-    // if (n_recs < 0) n_recs = 0; PGC next 2016-06-09
-    ++n_recs; // PGC n_recs=-1 for new data, =max existing record number for existing data; either way next record is +1 2016-06-09
-
+    if (n_recs < 0) n_recs = 0;
+    
     for (count=0; count<data_length; count++)
     {
         cdf_status = CDFputzVarRecordData (cdf_ids [cdf_handle], var_num, count + n_recs, data + count);
         if (cdf_status < CDF_WARN) return -1;
     }
-
+                               
     return 0;
 }
-
+    
 /** ------------------------------------------------------------------------
  *  ----------------------- Reading from CDF files -------------------------
  *  ------------------------------------------------------------------------*/
@@ -488,7 +487,7 @@ int imcdf_append_time_stamp_array (int cdf_handle, char *name, long long *data,
 int imcdf_get_global_attribute_string (int cdf_handle, char *name, int entry_no, char **value)
 {
     long attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     attr_num = CDFattrNum (cdf_ids [cdf_handle], name);
@@ -497,23 +496,23 @@ int imcdf_get_global_attribute_string (int cdf_handle, char *name, int entry_no,
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no,
+    
+    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_CHAR) return -1;
-
+    
     *value = malloc (num_elements +1);
     if (! *value)
     {
         cdf_status = BAD_MALLOC;
         return -1;
     }
-
+    
     cdf_status = CDFgetAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, *value);
     if (cdf_status < 0) return -1;
     *((*value) + num_elements) = '\0';
-
+    
     return 0;
 }
 
@@ -521,7 +520,7 @@ int imcdf_get_global_attribute_string (int cdf_handle, char *name, int entry_no,
 int imcdf_get_global_attribute_double (int cdf_handle, char *name, int entry_no, double *value)
 {
     long attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     attr_num = CDFattrNum (cdf_ids [cdf_handle], name);
@@ -530,15 +529,15 @@ int imcdf_get_global_attribute_double (int cdf_handle, char *name, int entry_no,
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no,
+    
+    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_DOUBLE) return -1;
-
+    
     cdf_status = CDFgetAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, value);
     if (cdf_status < 0) return -1;
-
+    
     return 0;
 }
 
@@ -546,7 +545,7 @@ int imcdf_get_global_attribute_double (int cdf_handle, char *name, int entry_no,
 int imcdf_get_global_attribute_tt2000 (int cdf_handle, char *name, int entry_no, long long *value)
 {
     long attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     attr_num = CDFattrNum (cdf_ids [cdf_handle], name);
@@ -555,15 +554,15 @@ int imcdf_get_global_attribute_tt2000 (int cdf_handle, char *name, int entry_no,
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no,
+    
+    cdf_status = CDFinquireAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_TIME_TT2000) return -1;
-
+    
     cdf_status = CDFgetAttrgEntry (cdf_ids [cdf_handle], attr_num, entry_no, value);
     if (cdf_status < 0) return -1;
-
+    
     return 0;
 }
 
@@ -582,12 +581,12 @@ int imcdf_get_global_attribute_tt2000 (int cdf_handle, char *name, int entry_no,
  * Returns: 0 for success, -1 for failure
  *
  ****************************************************************************/
-int imcdf_get_variable_attribute_string (int cdf_handle, char *attr_name,
+int imcdf_get_variable_attribute_string (int cdf_handle, char *attr_name, 
                                          char *var_name, char **value)
-
-{
+                                         
+{                                         
     long var_num, attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     var_num = CDFgetVarNum (cdf_ids [ cdf_handle], var_name);
@@ -596,40 +595,40 @@ int imcdf_get_variable_attribute_string (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) cdf_status;
         return -1;
     }
-
+    
     attr_num = CDFattrNum (cdf_ids [cdf_handle], attr_name);
     if (attr_num < 0)
     {
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num,
+    
+    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_CHAR) return -1;
-
+    
     *value = malloc (num_elements +1);
     if (! *value)
     {
         cdf_status = BAD_MALLOC;
         return -1;
     }
-
+    
     cdf_status = CDFgetAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, *value);
     if (cdf_status < 0) return -1;
     *((*value) + num_elements) = '\0';
-
+    
     return 0;
 }
 
 
-int imcdf_get_variable_attribute_double (int cdf_handle, char *attr_name,
+int imcdf_get_variable_attribute_double (int cdf_handle, char *attr_name, 
                                          char *var_name, double *value)
-
-{
+                                         
+{                                         
     long var_num, attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     var_num = CDFgetVarNum (cdf_ids [ cdf_handle], var_name);
@@ -638,32 +637,32 @@ int imcdf_get_variable_attribute_double (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) cdf_status;
         return -1;
     }
-
+    
     attr_num = CDFattrNum (cdf_ids [cdf_handle], attr_name);
     if (attr_num < 0)
     {
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num,
+    
+    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_DOUBLE) return -1;
-
+    
     cdf_status = CDFgetAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, value);
     if (cdf_status < 0) return -1;
-
+    
     return 0;
 }
 
 
-int imcdf_get_variable_attribute_tt2000 (int cdf_handle, char *attr_name,
+int imcdf_get_variable_attribute_tt2000 (int cdf_handle, char *attr_name, 
                                          char *var_name, long long *value)
-
-{
+                                         
+{                                         
     long var_num, attr_num, data_type, num_elements;
-
+    
     if (sanity_check_handles (cdf_handle)) return -1;
 
     var_num = CDFgetVarNum (cdf_ids [ cdf_handle], var_name);
@@ -672,27 +671,27 @@ int imcdf_get_variable_attribute_tt2000 (int cdf_handle, char *attr_name,
         cdf_status = (CDFstatus) cdf_status;
         return -1;
     }
-
+    
     attr_num = CDFattrNum (cdf_ids [cdf_handle], attr_name);
     if (attr_num < 0)
     {
         cdf_status = attr_num;
         return -1;
     }
-
-    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num,
+    
+    cdf_status = CDFinquireAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, 
                                        &data_type, &num_elements);
     if (cdf_status < 0) return -1;
     if (data_type != CDF_TIME_TT2000) return -1;
-
+    
     cdf_status = CDFgetAttrzEntry (cdf_ids [cdf_handle], attr_num, var_num, value);
     if (cdf_status < 0) return -1;
-
+    
     return 0;
 }
 
 /***************************************************************************
- * imcdf_get_var_data
+ * imcdf_get_var_data                                         
  * imcdf_get_var_time_stamp
  *
  * Description: get data from a data variable or a timestamp variable
@@ -720,19 +719,19 @@ double *imcdf_get_var_data (int cdf_handle, char *var_name, int *data_len)
         cdf_status = (CDFstatus) cdf_status;
         return 0;
     }
-
+    
     cdf_status = CDFinquirezVar (cdf_ids [cdf_handle], var_num, local_var_name,
                                  &data_type, &num_elements, &num_dims, dim_sizes,
                                  &rec_variance, dim_variance);
     if (cdf_status < 0) return 0;
     if (data_type != CDF_DOUBLE) return 0;
     if (num_dims != 0) return 0;
-
+    
     cdf_status = CDFgetzVarNumRecsWritten (cdf_ids [cdf_handle], var_num, data_len);
     if (cdf_status != CDF_OK) return 0;
-
+                                 
     data = malloc (*data_len * sizeof (double));
-    if (! data)
+    if (! data) 
     {
         cdf_status = BAD_MALLOC;
         return 0;
@@ -741,7 +740,7 @@ double *imcdf_get_var_data (int cdf_handle, char *var_name, int *data_len)
     for (count=0; count<*data_len; count++)
     {
         cdf_status = CDFgetzVarRecordData (cdf_ids [cdf_handle], var_num, count, data + count);
-        if (cdf_status < 0)
+        if (cdf_status < 0) 
         {
             free (data);
             return 0;
@@ -768,19 +767,19 @@ long long *imcdf_get_var_time_stamps (int cdf_handle, char *var_name, int *data_
         cdf_status = (CDFstatus) cdf_status;
         return 0;
     }
-
+    
     cdf_status = CDFinquirezVar (cdf_ids [cdf_handle], var_num, local_var_name,
                                  &data_type, &num_elements, &num_dims, dim_sizes,
                                  &rec_variance, dim_variance);
     if (cdf_status < 0) return 0;
     if (data_type != CDF_TIME_TT2000) return 0;
     if (num_dims != 0) return 0;
-
+    
     cdf_status = CDFgetzVarNumRecsWritten (cdf_ids [cdf_handle], var_num, data_len);
     if (cdf_status != CDF_OK) return 0;
-
+                                 
     data = malloc (*data_len * sizeof (long long));
-    if (! data)
+    if (! data) 
     {
         cdf_status = BAD_MALLOC;
         return 0;
@@ -789,7 +788,7 @@ long long *imcdf_get_var_time_stamps (int cdf_handle, char *var_name, int *data_
     for (count=0; count<*data_len; count++)
     {
         cdf_status = CDFgetzVarRecordData (cdf_ids [cdf_handle], var_num, count, data + count);
-        if (cdf_status < 0)
+        if (cdf_status < 0) 
         {
             free (data);
             return 0;
@@ -800,7 +799,7 @@ long long *imcdf_get_var_time_stamps (int cdf_handle, char *var_name, int *data_
 }
 
 /***************************************************************************
- * imcdf_is_var_exist
+ * imcdf_is_var_exist                                 
  *
  * Description: test if the given variable exists
  *
@@ -824,8 +823,8 @@ int imcdf_is_var_exist (int cdf_handle, char *name)
     }
     return 0;
 }
-
-
+    
+    
 /** ------------------------------------------------------------------------
  *  ---------------------- TT2000 data manipulation ------------------------
  *  ------------------------------------------------------------------------*/
@@ -842,12 +841,12 @@ int imcdf_is_var_exist (int cdf_handle, char *name)
  * Returns: 0 if conversion was completed OK, -1 otherwise
  *
  ****************************************************************************/
-int imcdf_date_time_to_tt2000 (int year, int month, int day, int hour,
+int imcdf_date_time_to_tt2000 (int year, int month, int day, int hour, 
                                int min, int sec, long long *tt2000)
 {
-    *tt2000 = CDF_TT2000_from_UTC_parts ((double) year, (double) month, (double) day,
-                                         (double) hour, (double) min, (double) sec,
-                                         0.0, 0.0, 0.0);
+    *tt2000 = computeTT2000 ((double) year, (double) month, (double) day,
+                             (double) hour, (double) min, (double) sec,
+                             0.0, 0.0, 0.0);
     if (*tt2000 == ILLEGAL_TT2000_VALUE)
     {
         cdf_status = BAD_ARGUMENT;
@@ -858,14 +857,14 @@ int imcdf_date_time_to_tt2000 (int year, int month, int day, int hour,
 }
 
 
-int imcdf_tt2000_to_date_time (long long tt2000,
-                               int *year, int *month, int *day,
+int imcdf_tt2000_to_date_time (long long tt2000, 
+                               int *year, int *month, int *day, 
                                int *hour, int *min, int *sec)
 {
     double d_year, d_month, d_day, d_hour, d_min, d_sec;
-
-    CDF_TT2000_to_UTC_parts (tt2000, &d_year, &d_month, &d_day,
-                             &d_hour, &d_min, &d_sec, TT2000NULL);
+    
+    breakdownTT2000 (tt2000, &d_year, &d_month, &d_day,
+                     &d_hour, &d_min, &d_sec, TT2000NULL);
     *year = (int) d_year;
     *month = (int) d_month;
     *day = (int) d_day;
@@ -884,14 +883,14 @@ int imcdf_tt2000_to_date_time (long long tt2000,
  *
  * Input parameters: tt2000 - the date / time to increment or decrement
  *                   inc - the amount to increment or decrement by (in seconds)
- * Output parameters:
+ * Output parameters: 
  * Returns: the new TT2000 value
  *
  ****************************************************************************/
 long long imcdf_tt2000_inc (long long tt2000, int inc)
 
 {
-    return tt2000 + ((long long) inc * 1000000000ll);
+    return tt2000 + ((long long) inc * 1000000000ll);    
 }
 
 /****************************************************************************
@@ -903,7 +902,7 @@ long long imcdf_tt2000_inc (long long tt2000, int inc)
  *                   hour, min, sec - the time (all 0 based)
  *                   increment - the time increment between samples, in seconds
  *                   n_samples - the number of samples
- * Output parameters:
+ * Output parameters: 
  * Returns: an array of TT2000 time stamps, allocated dynamically (so will need
  *          to be freed when done with) OR null if there was a problem.
  *          If this routine returns null, call imcdf_get_last_status_code()
@@ -918,7 +917,7 @@ long long *imcdf_make_tt2000_array (int year, int month, int day, int hour, int 
     int count;
     long long *tt2000_array, tt2000;
 
-
+    
     tt2000_array = malloc (sizeof (long long) * n_samples);
     if (! tt2000_array) return 0;
 
@@ -927,13 +926,13 @@ long long *imcdf_make_tt2000_array (int year, int month, int day, int hour, int 
         free (tt2000_array);
         return 0;
     }
-
+    
     for (count=0; count<n_samples; count++)
     {
         *(tt2000_array + count) = tt2000;
         tt2000 = imcdf_tt2000_inc (tt2000, increment);
     }
-
+    
     return tt2000_array;
 }
 
@@ -953,10 +952,10 @@ int imcdf_calc_samp_per_from_tt2000 (long long *tt2000_array)
 {
 
     long diff;
-
+    
     diff = (long) (*(tt2000_array +1) - *tt2000_array);
     return (int) (diff / 1000000000l);
-
+    
 }
 
 
@@ -978,7 +977,7 @@ char *imcdf_tt2000_tostring (long long tt2000)
 
   static char buffer [30];
 
-  CDF_TT2000_to_UTC_string (tt2000, buffer, 3);
+  encodeTT2000 (tt2000, buffer, 3);
   buffer [19] = '\0';
   return buffer;
 
@@ -988,7 +987,7 @@ char *imcdf_tt2000_tostring (long long tt2000)
 /** ------------------------------------------------------------------------
  *  --------------------------- Error notification -------------------------
  *  ------------------------------------------------------------------------*/
-
+ 
 /*****************************************************************************
  * imcdf_get_last_status_code
  *
@@ -1025,17 +1024,17 @@ char *imcdf_status_code_tostring (CDFstatus status)
 
     static char message[CDF_STATUSTEXT_LEN+30];
 
-    if (status < CDF_WARN)
+    if (status < CDF_WARN) 
     {
         CDFgetStatusText (status, cdf_msg);
         sprintf (message, "Error: %s\n", cdf_msg);
     }
-    else if (status < CDF_OK)
+    else if (status < CDF_OK) 
     {
         CDFgetStatusText (status, cdf_msg);
         sprintf (message, "Warning: %s\n", cdf_msg);
     }
-    else if (status > CDF_OK)
+    else if (status > CDF_OK) 
     {
         CDFgetStatusText (status, cdf_msg);
         sprintf (message, "Information: %s\n", cdf_msg);
@@ -1044,10 +1043,10 @@ char *imcdf_status_code_tostring (CDFstatus status)
     {
         strcpy (message, "Success");
     }
-
+    
     return message;
 }
-
+ 
 
 /** ------------------------------------------------------------------------
  *  ---------------------------- Private code ------------------------------
@@ -1057,13 +1056,13 @@ char *imcdf_status_code_tostring (CDFstatus status)
 static void initialise_cdf_ids ()
 {
     int count;
-
+    
     if (cdf_index < 0)
     {
         for (count=0; count<MAX_OPEN_CDF_FILES; count++)
             cdf_ids [count] = (CDFid) 0;
         cdf_index = 0;
-
+        
         cdf_status = CDF_OK;
     }
 }
@@ -1077,12 +1076,26 @@ static int sanity_check_handles (int cdf_handle)
     if (cdf_handle >= cdf_index) return -1;
     return 0;
 }
+ 
+/* find a global attribute - if it doesn't exist create it */
+static long find_global_attribute (int cdf_handle, char *name)
+{
+    long attr_num;
+    
+    attr_num = CDFattrNum (cdf_ids [cdf_handle], name);
+    if (attr_num < 0)
+    {
+        cdf_status = CDFcreateAttr (cdf_ids [cdf_handle], name, GLOBAL_SCOPE, &attr_num);
+        if (cdf_status < CDF_WARN) return -1;
+    }
+    return attr_num;
+}
 
 /* find a variable attribute - if it doesn't exist create it */
 static long find_variable_attribute (int cdf_handle, char *name)
 {
     long attr_num;
-
+    
     attr_num = CDFgetAttrNum (cdf_ids [cdf_handle], name);
     if (attr_num < 0)
     {
@@ -1091,5 +1104,4 @@ static long find_variable_attribute (int cdf_handle, char *name)
     }
     return attr_num;
 }
-
 

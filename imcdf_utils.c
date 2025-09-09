@@ -7,6 +7,7 @@
  *
  * Simon Flower, 18/12/2012
  * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015  
+ * Updates to version 1.3 of ImagCDF. Simon Flower, 09/09/2025
  *****************************************************************************/
 #include <string.h>
 #include <stdio.h>
@@ -158,9 +159,8 @@ char *imcdf_var_type_code_tostring (enum IMCDFVariableType code)
     {
     case IMCDF_VARTYPE_GEOMAGNETIC_FIELD_ELEMENT: return "GeomagneticFieldElement";
     case IMCDF_VARTYPE_TEMPERATURE: return "Temperature";
+    default: return "Error";
     }
-    
-    return "Error";
 }
 
  /*****************************************************************************

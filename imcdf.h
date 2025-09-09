@@ -7,6 +7,7 @@
  *
  * Simon Flower, 18/12/2012
  * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015
+ * Updates to version 1.3 of ImagCDF. Simon Flower, 09/09/2025
  *****************************************************************************/
 
 #include "cdf.h" 
@@ -40,10 +41,16 @@ enum IMCDFCompressionType {IMCDF_COMPRESS_NONE, IMCDF_COMPRESS_RLE,
                            IMCDF_COMPRESS_GZIP7, IMCDF_COMPRESS_GZIP8,
                            IMCDF_COMPRESS_GZIP9};
 
+/* an enumeration describing both the cadence and the coverage of the data */
+enum IMCDFInterval {IMCDF_INT_UNKNOWN, IMCDF_INT_ANNUAL, IMCDF_INT_MONTHLY, IMCDF_INT_DAILY, 
+                    IMCDF_INT_HOURLY, IMCDF_INT_MINUTE, IMCDF_INT_SECOND};
+
 /* the value used to represent missing data */
 #define IMCDF_MISSING_DATA_VALUE 99999.0
 
 /* names of time stamp variables in the CDF file */
+#define DATA_TIMES_VAR_NAME                     "DataTimes"
+#define GEOMAG_TIMES_VAR_NAME                   "GeomagneticTimes"
 #define VECTOR_TIME_STAMPS_VAR_NAME             "GeomagneticVectorTimes"
 #define SCALAR_TIME_STAMPS_VAR_NAME             "GeomagneticScalarTimes"
 #define TEMPERATURE_TIME_STAMPS_VAR_NAME_BASE   "Temperature%sTimes"
@@ -142,14 +149,14 @@ void imcdf_free_global_attrs (struct IMCDFGlobalAttr *global_attrs);
 void imcdf_free_variable (struct IMCDFVariable *variable);
 void imcdf_free_time_stamps (struct IMCDFVariableTS *ts);
 char *imcdf_write_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_attrs);
-char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable);
+char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable, int use_given_depend_0);
 char *imcdf_write_time_stamps (int cdf_handle, struct IMCDFVariableTS *ts);
 char *getINTERMAGNETTermsOfUse ();
 int imcdf_is_vector_gm_data (enum IMCDFVariableType var_type, char *elem_rec);
 int imcdf_is_scalar_gm_data (enum IMCDFVariableType var_type, char *elem_rec);
 char *imcdf_make_filename (char *prefix, char *station_code, long long start_date,
-			   enum IMCDFPubLevel pub_level,
-                           double sample_period,
+                           enum IMCDFPubLevel pub_level,
+                           enum IMCDFInterval cadence, enum IMCDFInterval coverage, 
                            int force_lower_case, char *filename);
 
 /* imcdf_low_level.c */

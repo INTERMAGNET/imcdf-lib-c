@@ -9,9 +9,4 @@ This code depends on NASA's CDF library: http://cdf.gsfc.nasa.gov/html/sw_and_do
 
 Simon Flower
 6th Mar 2015
-
-
-This code was last updated for ImagCDF version 1.1, but will also work correctly with ImagCDF version 1.2 data files. The main changes between the two versions is to do with naming of the variables used for time stamps in the data file and use of the variable attribute DEPEND_0 - the C code for ImagCDF version 1.1 is already compatible with these changes.
-
-Simon Flower
-24th Nov 2017
+Updated for version 1.3 of ImagCDF, 9th September 2025

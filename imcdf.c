@@ -29,13 +29,15 @@
  *        Call imcdf_write_global_attrs () to write the global attributes
  *        Call imcdf_write_variable multiple () times, once for each field element
  *                or temperature that you wish to put in the file
- *              Call imcdf_write_time_stamps () to write the time stamps
+ *        Call imcdf_write_time_stamps () to write the time stamps
  *        Call imcdf_close2 ()
  *
  * Simon Flower, 20/12/2012
  * Updates to version 1.1 of ImagCDF. Simon Flower, 19/02/2015 
+ * Updates to version 1.3 of ImagCDF. Simon Flower, 09/09/2025
  *****************************************************************************/
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <time.h>
@@ -118,8 +120,8 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
 
 {
 
-    int vt_count, found;
-    char var_name [30], *pl_str, *sl_str, *str;
+    int found, imcdf_version;
+    char *pl_str, *sl_str, *str, *ptr;
 
     /* get the global attributes */
     if (imcdf_get_global_attribute_string (cdf_handle, "FormatDescription",    0, &(global_attrs->format_description))) 
@@ -200,7 +202,8 @@ char *imcdf_read_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_at
         return format_error_message ("Title of data incorrect", global_attrs->title, CDF_OK);
     if (strcasecmp (global_attrs->format_description, "INTERMAGNET CDF Format"))
         return format_error_message ("Description of data incorrect", global_attrs->format_description, CDF_OK);
-    if (strcasecmp (global_attrs->format_version,     "1.1")) 
+    imcdf_version = (int) ((strtod (global_attrs->format_version, &ptr) * 10.0) + 0.5);
+    if (imcdf_version < 11 || imcdf_version > 13)
         return format_error_message ("Format incorrect", global_attrs->format_version, CDF_OK);
     
     return 0;
@@ -222,7 +225,7 @@ char *imcdf_read_variable (int cdf_handle, enum IMCDFVariableType var_type,
                            char *elem_rec, struct IMCDFVariable *variable)
 
 {
-    char var_name [30], *msg, *ptr;
+    char var_name [30], *ptr;
     
     /* create the variable name */
     ptr = create_var_name (var_type, elem_rec);
@@ -378,12 +381,11 @@ char *imcdf_write_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_a
 
 {
     int count;
-    char date_string [30];
 
     /* default values */
     if (is_blank (global_attrs->title))              global_attrs->title = "Geomagnetic time series data";
     if (is_blank (global_attrs->format_description)) global_attrs->format_description = "INTERMAGNET CDF Format";
-    if (is_blank (global_attrs->format_version))     global_attrs->format_version = "1.1";
+    if (is_blank (global_attrs->format_version))     global_attrs->format_version = "1.3";
     if (is_blank (global_attrs->terms_of_use))       global_attrs->terms_of_use = getINTERMAGNETTermsOfUse();
          
     /* write metadata */
@@ -448,15 +450,24 @@ char *imcdf_write_global_attrs (int cdf_handle, struct IMCDFGlobalAttr *global_a
  *
  * Input parameters: cdf_handle - handle to the CDF file
  *                   variable - the variable to write
+ *                   use_given_depend_0 - if TRUE use the depend_0 value
+ *                                        in the variable, if FALSE overwrite
+ *                                        depend_0 with a value calculated as
+ *                                        follows:
+ *                        For geomagnetic vector data: GeomagneticVectorTimes
+ *                        For geomagnetic scalar data: GeomagneticScalarTimes
+ *                        For temperature data: Temperature<n>Times
+ *                        For any other data: return an error
  * Output parameters: none
  * Returns: null for success, an error message if there was a fault
  *
  *****************************************************************************/
-char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable)
+char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable,
+                            int use_given_depend_0)
 
 {
 
-    char var_name [30], depend_0 [50], *ptr, lablaxis [20];
+    char var_name [30], depend_0 [50], *ptr, lablaxis [30];
     
     /* create the variable name */
     ptr = create_var_name (variable->var_type, variable->elem_rec);
@@ -469,15 +480,19 @@ char *imcdf_write_variable (int cdf_handle, struct IMCDFVariable *variable)
         return format_error_message ("Error writing variable data", var_name, CDF_OK);
     
     /* write the metadata - ignore the DEPEND_0 value in the 'variable' structure and construct a value from the data */
-    if (imcdf_is_vector_gm_data (variable->var_type, variable->elem_rec))
-        strcpy (depend_0, VECTOR_TIME_STAMPS_VAR_NAME);
-    else if (imcdf_is_scalar_gm_data (variable->var_type, variable->elem_rec))
-        strcpy (depend_0, SCALAR_TIME_STAMPS_VAR_NAME);
-    else
-    {
-        if (variable->var_type != IMCDF_VARTYPE_TEMPERATURE)
-            return format_error_message ("Missing or invalid element code", 0, CDF_OK);
-        sprintf (depend_0, TEMPERATURE_TIME_STAMPS_VAR_NAME_BASE, variable->elem_rec);
+    if (use_given_depend_0) {
+      strcpy (depend_0, variable->depend_0);
+    } else {
+      if (imcdf_is_vector_gm_data (variable->var_type, variable->elem_rec))
+          strcpy (depend_0, VECTOR_TIME_STAMPS_VAR_NAME);
+      else if (imcdf_is_scalar_gm_data (variable->var_type, variable->elem_rec))
+          strcpy (depend_0, SCALAR_TIME_STAMPS_VAR_NAME);
+      else
+      {
+          if (variable->var_type != IMCDF_VARTYPE_TEMPERATURE)
+              return format_error_message ("Missing or invalid element code", 0, CDF_OK);
+          sprintf (depend_0, TEMPERATURE_TIME_STAMPS_VAR_NAME_BASE, variable->elem_rec);
+      }
     }
 
     if (variable->var_type == IMCDF_VARTYPE_TEMPERATURE)
@@ -633,7 +648,8 @@ int imcdf_is_scalar_gm_data (enum IMCDFVariableType var_type, char *elem_rec)
  *                   station_code - the IAGA station code
  *                   start_date - the start date for the data (in CDF TT2000 format)
  *                   pub_level - the publication level of the data
- *                   sample_period - the period between samples, in seconds
+ *                   cadence - the cadence of the data
+ *                   coverage - the time-coverage of the data
  *                   force_lower_case - set true to force the filename to lower case
  * Output parameters: filename - the filename
  * Returns: the filename OR null if there is an error
@@ -641,30 +657,50 @@ int imcdf_is_scalar_gm_data (enum IMCDFVariableType var_type, char *elem_rec)
  ****************************************************************************/
 char *imcdf_make_filename (char *prefix, char *station_code, long long start_date,
                            enum IMCDFPubLevel pub_level,
-                           double sample_period,
+                           enum IMCDFInterval cadence, enum IMCDFInterval coverage, 
                            int force_lower_case, char *filename)
 {
     int year, month, day, hour, min, sec;
-    char file_base [30], *ptr;
-    double dummy;
+    char file_base [30], *ptr, *cadence_str;
 
     /* convert the date to a format that can be printed */
     imcdf_tt2000_to_date_time (start_date, &year, &month, &day, &hour, &min, &sec);
 
     /* set up the parts of the filename that depend on the sample period */
-    if (sample_period <= 1.0)               /* second data */
-        sprintf (file_base, "%04d%02d%02d_%02d%02d%02d_pt1s", year, month, day, hour, min, sec);
-    else if (sample_period <= 60.0)         /* minute data */
-        sprintf (file_base, "%04d%02d%02d_%02d%02d_pt1m", year, month, day, hour, min);
-    else if (sample_period <= 3600.0)       /* hour data */
-        sprintf (file_base, "%04d%02d%02d_%02d_pt1h", year, month, day, hour);
-    else if (sample_period <= 86400.0)      /* day data */
-        sprintf (file_base, "%04d%02d%02d_p1d", year, month, day);
-    else if (sample_period <= 2678400)      /* month data */
-        sprintf (file_base, "%04d%02d_p1m", year, month);
-    else                                    /* year data */
-        sprintf (file_base, "%04d_p1y", year);
+    switch(cadence)
+    {
+        case IMCDF_INT_ANNUAL:  cadence_str = "p1y"; break;
+        case IMCDF_INT_MONTHLY: cadence_str = "p1m"; break;
+        case IMCDF_INT_DAILY:   cadence_str = "p1d"; break;
+        case IMCDF_INT_HOURLY:  cadence_str = "pt1h"; break;
+        case IMCDF_INT_MINUTE:  cadence_str = "pt1m"; break;
+        case IMCDF_INT_SECOND:  cadence_str = "pt1s"; break;
+        default:                cadence_str = "unkn"; break;
+    }
 
+    /* set up the parts of the filename that depend on the time coverage */
+    switch(coverage)
+    {
+        case IMCDF_INT_ANNUAL:
+            sprintf (file_base, "%04d_%s", year, cadence_str);
+            break;
+        case IMCDF_INT_MONTHLY: 
+            sprintf (file_base, "%04d%02d_%s", year, month, cadence_str);
+            break;
+        case IMCDF_INT_DAILY: 
+            sprintf (file_base, "%04d%02d%02d_%s", year, month, day, cadence_str);
+            break;
+        case IMCDF_INT_HOURLY: 
+            sprintf (file_base, "%04d%02d%02d_%02d_%s", year, month, day, hour, cadence_str);
+            break;
+        case IMCDF_INT_MINUTE:
+            sprintf (file_base, "%04d%02d%02d_%02d%02d_%s", year, month, day, hour, min, cadence_str);
+            break;
+        default:
+            sprintf (file_base, "%04d%02d%02d_%02d%02d%02d_%s", year, month, day, hour, min, sec, cadence_str);
+            break;
+    }
+   
     if (! prefix) prefix = "";
     sprintf (filename, "%s%s_%s_%s.cdf", prefix, station_code, file_base, 
          imcdf_pub_level_code_tostring (pub_level));
